@@ -1,0 +1,62 @@
+# TODO this needs some base image love, we can probably extract the proto layer first
+FROM golang as builder
+
+# install protoc
+RUN apt-get update
+RUN apt-get install -y protobuf-compiler
+
+# install go protobuf generator
+# TODO this should be off a git tag
+WORKDIR ${GOPATH}/src/github.com/google/protobuf
+RUN git clone https://github.com/google/protobuf.git .
+
+# TODO this should be off a git tag
+RUN go get -u github.com/golang/protobuf/protoc-gen-go
+
+# install go validator plugin
+# TODO this should be off a git tag
+RUN go get github.com/mwitkow/go-proto-validators/protoc-gen-govalidators
+
+# install swagger tooling
+RUN go get github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway
+RUN go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger
+
+
+WORKDIR ${GOPATH}/src/github.com/WeConnect/core-id-tokenmint-experiment
+
+# TODO fold this down
+COPY . .
+
+RUN export PATH=${PATH}:${GOPATH}/bin
+WORKDIR ${GOPATH}/src/github.com/WeConnect/core-id-tokenmint-experiment/go/api
+
+RUN go generate
+
+WORKDIR ${GOPATH}/src/github.com/WeConnect/core-id-tokenmint-experiment
+# RUN go list ./go/... | grep -v vendor | xargs go vet -v
+RUN go test $(go list ./go/... | grep -v vendor)
+
+WORKDIR ${GOPATH}/src/github.com/WeConnect/core-id-tokenmint-experiment/go/server
+RUN set -x && \
+  CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server main.go
+
+
+#RUN echo $(pwd)
+#RUN echo $(ls ${GOPATH}/src/github.com/WeConnect/core-id-tokenmint-experiment)
+
+
+FROM alpine
+# install bash and kms dependencies
+RUN apk --no-cache update && \
+    apk --no-cache add bash python py-pip py-setuptools ca-certificates curl groff less && \
+    pip --no-cache-dir install awscli && \
+    rm -rf /var/cache/apk/*
+
+WORKDIR /root/
+COPY --from=builder /go/src/github.com/WeConnect/core-id-tokenmint-experiment/go/server/server .
+COPY --from=builder /go/src/github.com/WeConnect/core-id-tokenmint-experiment/go/docker docker
+
+# note this will be replaced by logic in the entrypoint
+COPY --from=builder /go/src/github.com/WeConnect/core-id-tokenmint-experiment/keys/tokenmint_signature_private_keyset_dev_unencrypted /tmp/
+
+ENTRYPOINT ["docker/entrypoint.sh"]
