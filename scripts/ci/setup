@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+cd "$(dirname "$0")/../../"
+
+.circleci/docker_login
+
+export CONTAINER_TAG=$(.circleci/full_tag)
+docker volume create --name=auth-gems
+docker volume create --name=auth-spring
+docker volume create --name=auth-test-data
+
+docker-compose pull --parallel test-pg test
+docker-compose run test bundle install --with test development
+docker-compose up -d spring

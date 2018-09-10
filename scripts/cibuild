@@ -1,0 +1,19 @@
+#!/bin/sh
+set -e
+cd "$(dirname "$0")/.."
+
+# build, tag, and push release image
+docker build . -t $(.circleci/full_tag)
+docker push $(.circleci/full_tag)
+
+# tag all intermediate builds
+grep LABEL Dockerfile | awk '{print $2}' | while read -r line ; do
+  label_value=${line#*=}
+  docker tag $(docker images --filter "label=$line" --format {{.ID}}) $(.circleci/full_tag)-$label_value
+done
+
+if [ "$CIRCLE_BRANCH" = "master" ]; then
+    master_tag="$(.circleci/full_tag)-$(git rev-parse --short HEAD)"
+    docker tag $(.circleci/full_tag) $master_tag
+    docker push $master_tag
+fi

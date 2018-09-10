@@ -1,0 +1,5 @@
+#!/bin/sh
+
+tag=$(echo $CIRCLE_BRANCH | sed "s|/|-|")
+
+echo "$DOCKER_REPOSITORY:$tag"
