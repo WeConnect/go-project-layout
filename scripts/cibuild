@@ -3,13 +3,14 @@ set -e
 cd "$(dirname "$0")/.."
 
 # build, tag, and push release image
-docker build . -t $(.circleci/full_tag)
+docker build . -t $(.circleci/full_tag) --stage release
 docker push $(.circleci/full_tag)
 
 # tag all intermediate builds
 grep LABEL Dockerfile | awk '{print $2}' | while read -r line ; do
   label_value=${line#*=}
   docker tag $(docker images --filter "label=$line" --format {{.ID}}) $(.circleci/full_tag)-$label_value
+  docker push $(.circleci/full_tag)-$label_value
 done
 
 if [ "$CIRCLE_BRANCH" = "master" ]; then

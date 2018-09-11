@@ -25,14 +25,8 @@ FROM scratch AS release
 
 FROM golang:alpine AS dev-env
   LABEL stage=dev-env
-  COPY --from=baseGo / /
+  COPY --from=baseGo /go /go
   WORKDIR $GOPATH/src/github.com/WeConnect/go-project-layout/cmd/sample
   ENTRYPOINT ["./sample"]
-
-FROM golang:alpine AS test
-  LABEL stage=test
-  COPY --from=release / /
-  WORKDIR $GOPATH/src/github.com/WeConnect/go-project-layout
-  ENTRYPOINT ["go test"]
 
 FROM release

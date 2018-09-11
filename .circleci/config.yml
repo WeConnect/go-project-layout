@@ -3,7 +3,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: docker:stable-git
+      - image: circleci/golang:1.9
     environment:
       - DOCKER_REGISTRY: 'quay.io/wework'
       - DOCKER_REPOSITORY: 'quay.io/wework/weauth'
