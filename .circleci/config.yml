@@ -6,71 +6,19 @@ jobs:
       - image: circleci/golang:1.9
     environment:
       - DOCKER_REGISTRY: 'quay.io/wework'
-      - DOCKER_REPOSITORY: 'quay.io/wework/weauth'
+      - DOCKER_REPOSITORY: 'quay.io/wework/go_project_layout'
+    working_directory: /go/src/github.com/WeConnect/go_project_layout
     steps:
       - checkout
       - setup_remote_docker
       - run:
           name: DockerLogin
           command: .circleci/docker_login
+      - run: go get -v -t -d ./...
+      - run: go test -v ./...
       - run:
           name: CIBuild
           command: script/cibuild
-
-  test:
-    machine: true
-    environment:
-      - COMPOSE_FILE: 'docker-compose.test.yml'
-      - DOCKER_REGISTRY: 'quay.io/wework'
-      - DOCKER_REPOSITORY: 'quay.io/wework/weauth'
-    steps:
-      - checkout
-      - run:
-          name: Setup
-          command: script/ci/setup
-      - run:
-          name: CITest
-          command: |
-            export CONTAINER_TAG=$(.circleci/full_tag)
-            script/test
-
-  brakeman:
-    machine: true
-    environment:
-      - COMPOSE_FILE: 'docker-compose.test.yml'
-      - DOCKER_REGISTRY: 'quay.io/wework'
-      - DOCKER_REPOSITORY: 'quay.io/wework/weauth'
-    steps:
-      - checkout
-      - run:
-          name: Setup
-          command: script/ci/setup
-      - run:
-          name: Brakeman
-          command:  |
-            export CONTAINER_TAG=$(.circleci/full_tag)
-            docker-compose run brakeman
-      - store_artifacts:
-          path: brakeman-output.html
-
-  rubocop:
-    machine: true
-    environment:
-      - COMPOSE_FILE: 'docker-compose.test.yml'
-      - DOCKER_REGISTRY: 'quay.io/wework'
-      - DOCKER_REPOSITORY: 'quay.io/wework/weauth'
-    steps:
-      - checkout
-      - run:
-          name: Setup
-          command: script/ci/setup
-      - run:
-          name: Rubocop
-          command:  |
-            export CONTAINER_TAG=$(.circleci/full_tag)
-            docker-compose run rubocop
-      - store_artifacts:
-          path: rubocop.html
 
 workflows:
   version: 2
@@ -78,27 +26,3 @@ workflows:
     jobs:
       - build:
           context: org-global
-      - test:
-          context: org-global
-          requires:
-            - build
-          filters:
-            branches:
-              ignore:
-                - master
-      - brakeman:
-          context: org-global
-          requires:
-            - build
-          filters:
-            branches:
-              ignore:
-                - master
-      - rubocop:
-          context: org-global
-          requires:
-            - build
-          filters:
-            branches:
-              ignore:
-                - master
