@@ -152,5 +152,3 @@ Some Go projects do have a `src` folder, but it usually happens when the devs ca
 [![Release](https://img.shields.io/github/release/golang-standards/project-layout.svg?style=flat-square)](https://github.com/golang-standards/project-layout/releases/latest)
 
 ## Notes
-
-A more opinionated project template with sample/reusable configs, scripts and code is a WIP.
