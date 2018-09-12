@@ -1,4 +1,4 @@
-FROM golang:1.10.1-alpine3.7 AS baseGo
+FROM golang:alpine AS baseGo
   ENV CGO_ENABLED 0
   RUN apk --no-cache add git bzr mercurial
   RUN go get -u github.com/golang/dep/...
@@ -6,13 +6,12 @@ FROM golang:1.10.1-alpine3.7 AS baseGo
   COPY . $GOPATH/src/github.com/WeConnect/go-project-layout
   WORKDIR $GOPATH/src/github.com/WeConnect/go-project-layout
   RUN dep ensure -v --vendor-only
-  RUN ls -ltra /go/bin
-  RUN go build -gcflags='all=-N -l' -o cmd/sample/sample cmd/sample/sample.go
+  RUN go build -gcflags='all=-N -l' -o sample cmd/sample/sample.go
 
 FROM scratch AS debug
   LABEL stage=debug
   COPY --from=baseGo /go/bin/dlv /
-  COPY --from=baseGo /go/src/github.com/WeConnect/go-project-layout/cmd/sample/sample /
+  COPY --from=baseGo /go/src/github.com/WeConnect/go-project-layout/cmd/sample /
   ENTRYPOINT ["/dlv", "--listen=:40000", "--headless=true", "--api-version=2", "exec", "/sample"]
 
 FROM scratch AS mock
