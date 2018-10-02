@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+
+#cleanup
+docker rmi $(docker images -f "dangling=true" -q)

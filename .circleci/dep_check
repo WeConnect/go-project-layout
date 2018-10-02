@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# if vendor directory doesn't exists, then download dep, and download dependencies
+if [ ! -d ./vendor ]; then
+    # download dep
+    curl -L -s https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 -o /go/bin/dep
+    # make dep executable
+    chmod +x /go/bin/dep
+    # run dep ensure in order to download dependencies
+    /go/bin/dep ensure -v
+fi

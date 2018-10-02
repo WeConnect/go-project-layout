@@ -1,28 +1,107 @@
-version: 2
+defaults: &defaults
+  working_directory: /go/src/github.com/WeConnect/go-project-layout
+  docker:
+    - image: circleci/golang:1.11.0
 
+version: 2
 jobs:
   build:
-    docker:
-      - image: circleci/golang:1.9
+    <<: *defaults
     environment:
-      - DOCKER_REGISTRY: 'quay.io/wework'
-      - DOCKER_REPOSITORY: 'quay.io/wework/go_project_layout'
-    working_directory: /go/src/github.com/WeConnect/go_project_layout
+      - DEP_VERSION: 0.5.0
     steps:
+      - run: git config --global url.ssh://git@github.com/WeConnect.insteadOf https://github.com/WeConnect
       - checkout
+      - run:
+          name: download-libraries
+          command: |
+            .circleci/dep_check
+      - run:
+          name: Go Format
+          command: |
+            go fmt ./...
+      - run:
+          name: Go Build
+          command: |
+            go build -v ./...
+      - run:
+          name: Go Vet
+          command: |
+            go vet ./...
+      - run:
+          name: Go Test
+          command: |
+            go test -p 6 -race ./...
+  deploy:
+    <<: *defaults
+    environment:
+      - DOCKER_REPOSITORY: 'quay.io/wework/go-project-layout'
+      - DEP_VERSION: 0.5.0
+    steps:
+      - run: git config --global url.ssh://git@github.com/WeConnect.insteadOf https://github.com/WeConnect
+      - checkout
+      - run:
+          name: download-libraries
+          command: |
+            .circleci/dep_check
+      - run:
+          name: Go Format
+          command: |
+            go fmt ./...
+      - run:
+          name: Go Build
+          command: |
+            go build -v ./...
+      - run: go get -u github.com/stevenmatthewt/semantics
+      - add_ssh_keys
+      - run:
+          name: Git Create Tag
+          command: |
+            tag=$(semantics --major="^major:.*" --minor="^minor:.*" --patch=.* --output-tag --dry-run)
+            if [ "$tag" ]; then
+              echo "export tag=$tag" >> env_file
+              echo "export dockerImage=$DOCKER_REPOSITORY:$tag" >> env_file
+            else
+              echo "The commit message(s) did not indicate a major/minor/patch version."
+            fi
       - setup_remote_docker
       - run:
-          name: DockerLogin
-          command: .circleci/docker_login
-      - run: go get -v -t -d ./...
-      - run: go test -v ./...
+          name: Docker Build Image
+          command: |
+            source env_file
+            docker build . -t ${dockerImage}
       - run:
-          name: CIBuild
-          command: script/cibuild
+          name: Docker Tag Image
+          command: |
+            source env_file
+            .circleci/docker_tag ${dockerImage}
+      - run:
+          name: Docker Login
+          command: |
+            .circleci/docker_login
+      - run:
+          name: Docker Push Image
+          command: |
+            source env_file
+            .circleci/docker_push ${dockerImage}
+      - run:
+          name: Docker Cleanup
+          command: |
+            .circleci/docker_cleanup
+      - run:
+          name: Git Push Tag
+          command: |
+            semantics --major="^major:.*" --minor="^minor:.*" --patch=.* --output-tag
 
 workflows:
   version: 2
-  cibuild:
+  build-deploy:
     jobs:
       - build:
-          context: org-global
+          filters:
+            branches:
+              ignore: master
+      - deploy:
+          filters:
+            branches:
+              only: master

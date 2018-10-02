@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+
+# docker_push {{ dockerImage }}
+dockerImage=$1
+
+# push the release
+docker push ${dockerImage}
+
+# tagging docker images with label
+grep 'LABEL' Dockerfile | awk '{print $2}' | while read -r line ; do
+  label_value=${line#*=}
+  currImage=${dockerImage}-${label_value}
+  docker push ${currImage}
+done

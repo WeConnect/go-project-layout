@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+
+# docker_tag {{ dockerImage }}
+dockerImage=$1
+
+# tagging docker images with label
+grep 'LABEL' Dockerfile | awk '{print $2}' | while read -r line ; do
+  label_value=${line#*=}
+  # Get image id
+  imageId=`echo $(docker images --filter "label=$line" --format {{.ID}})`
+
+  # if image id is present, tag it with label
+  if [ ! -z ${imageId} ]; then
+    # tag docker image with label. e.g, quay.io/wework/go-project-layout:1.1.0-dev
+    docker tag ${imageId} ${dockerImage}-${label_value}
+  fi
+done

@@ -1,6 +1,14 @@
 #!/bin/sh
 set -e
 
-if [ -n "$CIRCLECI" ]; then
-  echo $DOCKER_PASSWD | docker login $DOCKER_REGISTRY -u $DOCKER_USER --password-stdin
+if [ -z ${QUAY_ROBOT_USER} ]; then
+    echo "quay user is empty. Could not proceed to docker login"
+    exit 1
 fi
+
+if [ -z ${QUAY_TOKEN} ]; then
+    echo "quay token is empty. Could not proceed to docker login"
+    exit 1
+fi
+
+docker login -u="$QUAY_ROBOT_USER" -p="$QUAY_TOKEN" quay.io
